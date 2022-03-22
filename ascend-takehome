@@ -6,18 +6,28 @@ seen = {}
 goog_apiKey = 'AIzaSyA2fub6_7OjTVs1QgV1YoBmHgx34FTRj10'
 url = 'https://maps.googleapis.com/maps/api/geocode/json?'
 
-testList = [json.dumps({'address_line_one': '1370 Balsam Avenue', 'city': 'Baton Rouge', 'state': 'LA', 'zip_code': '70807'})]
+# turns Json data into a formatted URL for a request to the Google geocoding API
+def toRequestUrl(jsonData):
+    wanted = jsonData['address_line_one']+' '+jsonData['city']+' '+jsonData['state']+' '+jsonData['zip_code']
+    formatted = wanted.replace(" ", "%20")
+    urlRequest = url+'address='+formatted+'&'+'key='+goog_apiKey
+    return urlRequest
 
+# validates addresses by searching for addresses' latitude and longitude
 def validate(addyArr):
     if addyArr and type(addyArr) == list:
         responses = []
         for i in addyArr:
             unique = hash(i)
             if unique not in seen.keys():
-                data = json.loads(i)
-                wanted = data['address_line_one']+' '+data['city']+' '+data['state']+' '+data['zip_code']
-                formatted = wanted.replace(" ", "%20")
-                request = url+'address='+formatted+'&'+'key='+goog_apiKey
+                try:
+                    data = json.loads(i)
+                except:
+                    print('Invalid address found in list')
+                    seen[unique] = 'Invalid Address'
+                    responses.append('Invalid Address')
+                    continue
+                request = toRequestUrl(data)
                 try:
                     url_response = urllib.request.urlopen(request)
                 except:
@@ -36,18 +46,44 @@ def validate(addyArr):
                 seen[unique] = addyLatLng
                 responses.append(addyLatLng)
             else:
-                responses.append(seen[i])
+                responses.append(seen[unique])
         return responses
     else:
-        print("\nInvalid Input\n")
+        print("\nInput is either empty or not a list, please modify and try again\n")
         return None
 
+def tests():
+    # empty input
+    assert(validate([]) == None)
+    # non address input
+    assert(validate('hello') == None) # string
+    assert(validate(3) == None) # int
+    assert(validate(2.03) == None) # float
+    # valid addresses in rural areas and cities (testing expected functionality)
+    testList1 = [json.dumps({'address_line_one': '1370 Balsam Avenue', 'city': 'Baton Rouge', 'state': 'LA', 'zip_code': '70807'})]
+    testList2 = [json.dumps({'address_line_one': '285 Fulton St', 'city': 'New York', 'state': 'NY', 'zip_code': '10006'}),
+                json.dumps({'address_line_one': '337 E Second St', 'city': 'Powell', 'state': 'WY', 'zip_code': '82435'})]
+    assert(validate(testList1) == ['{"address_line_one": "1370 Balsam Avenue", "city": "Baton Rouge", "state": "LA", "zip_code": "70807", "latitude": 30.5408294, "longitude": -91.1798335}'])
+    assert(validate(testList2) == ['{"address_line_one": "285 Fulton St", "city": "New York", "state": "NY", "zip_code": "10006", "latitude": 40.7130082, "longitude": -74.0131689}',
+                                '{"address_line_one": "337 E Second St", "city": "Powell", "state": "WY", "zip_code": "82435", "latitude": 44.7543727, "longitude": -108.7551059}'])
+    # same address multiple times (testing cache)
+    testList3 = [json.dumps({'address_line_one': '301 Platt Blvd', 'city': 'Claremont', 'state': 'CA', 'zip_code': '91711'}),
+                json.dumps({'address_line_one': '301 Platt Blvd', 'city': 'Claremont', 'state': 'CA', 'zip_code': '91711'}),
+                json.dumps({'address_line_one': '301 Platt Blvd', 'city': 'Claremont', 'state': 'CA', 'zip_code': '91711'}),
+                json.dumps({'address_line_one': '301 Platt Blvd', 'city': 'Claremont', 'state': 'CA', 'zip_code': '91711'}),
+                json.dumps({'address_line_one': '301 Platt Blvd', 'city': 'Claremont', 'state': 'CA', 'zip_code': '91711'})]
+    assert(validate(testList3) == ['{"address_line_one": "301 Platt Blvd", "city": "Claremont", "state": "CA", "zip_code": "91711", "latitude": 34.1059342, "longitude": -117.7072802}',
+                        '{"address_line_one": "301 Platt Blvd", "city": "Claremont", "state": "CA", "zip_code": "91711", "latitude": 34.1059342, "longitude": -117.7072802}',
+                        '{"address_line_one": "301 Platt Blvd", "city": "Claremont", "state": "CA", "zip_code": "91711", "latitude": 34.1059342, "longitude": -117.7072802}',
+                        '{"address_line_one": "301 Platt Blvd", "city": "Claremont", "state": "CA", "zip_code": "91711", "latitude": 34.1059342, "longitude": -117.7072802}',
+                        '{"address_line_one": "301 Platt Blvd", "city": "Claremont", "state": "CA", "zip_code": "91711", "latitude": 34.1059342, "longitude": -117.7072802}'])
+    # - list with valid and invalid addresses
+    # - list with addresses and non addresses
+    # - list with invalid addresses
+    # - input with lat and long already (testing output as input)
+    # - all permutations of missing params -- Google still tries its best with missing params
+
 if __name__ == '__main__':
-    print('Enter the list of addresses:')
+    print('Please enter the list of JSON addresses:')
     x = input()
     print(validate(x))
-
-# Google still tries it's best with missing params
-assert(validate(testList) == ['{"address_line_one": "1370 Balsam Avenue", "city": "Baton Rouge", "state": "LA", "zip_code": "70807", "latitude": 30.5408294, "longitude": -91.1798335}'])
-assert(validate([]) == None)
-assert(validate('hello') == None)
