@@ -1,16 +1,19 @@
 import json
 import urllib.request
 
+seen = {}
+
 goog_apiKey = 'AIzaSyA2fub6_7OjTVs1QgV1YoBmHgx34FTRj10'
 url = 'https://maps.googleapis.com/maps/api/geocode/json?'
 
 testList = [json.dumps({'address_line_one': '1370 Balsam Avenue', 'city': 'Baton Rouge', 'state': 'LA', 'zip_code': '70807'})]
 
 def validate(addyArr):
-    if addyArr:
+    if addyArr and type(addyArr) == list:
         responses = []
-        if type(addyArr) == list:
-            for i in addyArr:
+        for i in addyArr:
+            unique = hash(i)
+            if unique not in seen.keys():
                 data = json.loads(i)
                 wanted = data['address_line_one']+' '+data['city']+' '+data['state']+' '+data['zip_code']
                 formatted = wanted.replace(" ", "%20")
@@ -30,12 +33,13 @@ def validate(addyArr):
                 except:
                     print("\nLatitude and Longitude Data Not Found for this Address\n")
                 addyLatLng = json.dumps({'address_line_one': data['address_line_one'], 'city': data['city'], 'state': data['state'], 'zip_code': data['zip_code'], 'latitude': lat, 'longitude': lng})
+                seen[unique] = addyLatLng
                 responses.append(addyLatLng)
-            return responses
-        else:
-            print("Invalid Input")
+            else:
+                responses.append(seen[i])
+        return responses
     else:
-        print("No addresses to look up")
+        print("\nInvalid Input\n")
         return None
 
 if __name__ == '__main__':
@@ -43,6 +47,7 @@ if __name__ == '__main__':
     x = input()
     print(validate(x))
 
+# Google still tries it's best with missing params
 assert(validate(testList) == ['{"address_line_one": "1370 Balsam Avenue", "city": "Baton Rouge", "state": "LA", "zip_code": "70807", "latitude": 30.5408294, "longitude": -91.1798335}'])
 assert(validate([]) == None)
 assert(validate('hello') == None)
