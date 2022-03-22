@@ -84,6 +84,7 @@ def tests():
     # - all permutations of missing params -- Google still tries its best with missing params
 
 if __name__ == '__main__':
-    print('Please enter the list of JSON addresses:')
-    x = input()
-    print(validate(x))
+    while True:
+        print('\nPlease paste the list of JSON formatted addresses:\n')
+        x = input()
+        print(validate(x))
